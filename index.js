@@ -2,6 +2,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
@@ -101,57 +102,30 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/classes/:id", async (req, res) => {
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+      const result = await classesCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
       const newClass = req.body;
       const result = await classesCollection.insertOne(newClass);
       res.send(result);
     });
 
-    app.delete("/classes/:id", verifyJWT, verifyInstructor, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await classesCollection.deleteOne(query);
-      res.send(result);
-    });
-
-    // ADMIN Works 
-    
-    app.patch("/classes/approved/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          status: "approved",
-        },
-      };
-      const result = await usersCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
-
-    app.patch("/classes/pending/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          status: "pending",
-        },
-      };
-      const result = await usersCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
-
-    app.patch("/classes/denied/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          status: "denied",
-        },
-      };
-      const result = await usersCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
-
+    app.delete(
+      "/classes/:id",
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await classesCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
     app.get("/instructors", async (req, res) => {
       const result = await instructorsCollection.find().toArray();
@@ -159,7 +133,7 @@ async function run() {
     });
 
     // students dashboard related apis
-    app.post("/selectedClasses", async (req, res) => {
+    app.post("/selectedClasses", verifyJWT, async (req, res) => {
       const selectedOne = req.body;
       const result = await selectedClassesCollection.insertOne(selectedOne);
       res.send(result);
@@ -264,7 +238,60 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
-// End of Admin Works 
+
+    // ADMIN Works
+
+    app.patch("/classes/approved/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: "approved",
+        },
+      };
+      const result = await classesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/classes/pending/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: "pending",
+        },
+      };
+      const result = await classesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/classes/denied/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: "denied",
+        },
+      };
+      const result = await classesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+    // End of Admin Works
+
+    // Payment 
+    app.post('/create-payment-intent', async(req, res) =>{
+      const {price} = req.body;
+      const amount = price * 100
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount, 
+        currency: 'usd',
+        payment_methods_type: ['card']
+      })
+      res.send({
+        clientSecret : paymentIntent.client_secret  
+      })
+
+    })
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
