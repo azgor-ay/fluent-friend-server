@@ -49,10 +49,6 @@ async function run() {
 
     const usersCollection = client.db("Fluent-Friends-DB").collection("users");
 
-    const instructorsCollection = client
-      .db("Fluent-Friends-DB")
-      .collection("Instructors");
-
     const selectedClassesCollection = client
       .db("Fluent-Friends-DB")
       .collection("selectedClasses");
@@ -93,7 +89,7 @@ async function run() {
     };
 
     // Basic Apis
-    app.get("/classes", async (req, res) => {
+    app.get("/classes", verifyJWT, async (req, res) => {
       let query = {};
       if (req.query.email) {
         query = { email: req.query.email };
@@ -101,6 +97,12 @@ async function run() {
       const result = await classesCollection.find(query).toArray();
       res.send(result);
     });
+
+    app.get('/classes/approved', async(req, res)=>{
+      const filter = {status: 'approved'}
+      const result = await classesCollection.find(filter).toArray()
+      res.send(result); 
+    })
 
     app.get("/classes/:id", async (req, res) => {
       const id = req.params.id;
@@ -128,7 +130,14 @@ async function run() {
     );
 
     app.get("/instructors", async (req, res) => {
-      const result = await instructorsCollection.find().toArray();
+      const query = {role: 'instructor'}
+      const result = await usersCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/students", async (req, res) => {
+      const query = {role: 'student'}
+      const result = await usersCollection.find(query).toArray();
       res.send(result);
     });
 
