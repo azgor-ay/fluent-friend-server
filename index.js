@@ -2,10 +2,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
 // middleware
 app.use(cors());
@@ -103,10 +103,10 @@ async function run() {
     });
 
     app.get("/classes/:id", async (req, res) => {
-      const id = req.params.id
-      const query = {_id: new ObjectId(id)}
-      const result = await classesCollection.find(query).toArray();
-      res.send(result);
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await classesCollection.findOne(query);
+      res.json({result});
     });
 
     app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
@@ -169,6 +169,13 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+
+    // app.get("/totalStudents", async (req, res) => {
+    //   const query = { role: {role: "student"} };
+    //   const students = usersCollection.find(query)
+    //   const result = await students.estimatedDocumentCount();
+    //   res.send({totalStudent: result});
+    // });
 
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -278,20 +285,20 @@ async function run() {
     });
     // End of Admin Works
 
-    // Payment 
-    app.post('/create-payment-intent', async(req, res) =>{
-      const {price} = req.body;
-      const amount = price * 100
+    // Payment
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseFloat(price * 100)
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount, 
-        currency: 'usd',
-        payment_methods_type: ['card']
-      })
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
       res.send({
-        clientSecret : paymentIntent.client_secret  
-      })
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
 
-    })
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
