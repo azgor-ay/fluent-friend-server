@@ -191,12 +191,6 @@ async function run() {
       res.send(result);
     });
 
-    // Admin works apis
-    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
-      const result = await usersCollection.find().toArray();
-      res.send(result);
-    });
-
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = { email: user?.email };
@@ -230,45 +224,13 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/users/student/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "student",
-        },
-      };
-      const result = await usersCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
-
-    app.patch("/users/instructor/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "instructor",
-        },
-      };
-      const result = await usersCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
-
-    app.patch("/users/admin/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const result = await usersCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
-
     // ADMIN Works
+    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
 
-    app.patch("/classes/approved/:id", async (req, res) => {
+    app.patch("/classes/approved/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -280,7 +242,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/classes/pending/:id", async (req, res) => {
+    app.patch("/classes/pending/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -292,7 +254,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/classes/denied/:id", async (req, res) => {
+    app.patch("/classes/denied/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -301,6 +263,42 @@ async function run() {
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/users/student/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "student",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/users/instructor/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "instructor",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
     // End of Admin Works
