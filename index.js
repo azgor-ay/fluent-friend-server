@@ -106,7 +106,7 @@ async function run() {
     };
 
     // Basic Apis
-    app.get("/classes", verifyJWT, verifyInstructor, async (req, res) => {
+    app.get("/classes", verifyJWT, async (req, res) => {
       let query = {};
       if (req.query.email) {
         query = { email: req.query.email };
@@ -220,6 +220,7 @@ async function run() {
       if (req.decoded.email !== email) {
         return res.send({ admin: false });
       }
+
       const query = { email: email };
       const user = await usersCollection.findOne(query);
       const result = { admin: user?.role === "admin" };
@@ -260,20 +261,19 @@ async function run() {
       const updateDoc = {
         $set: {
           status: "approved",
-          feedback: "perfect"
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
-    app.patch("/classes/pending/:id", verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch("/classes/feedback/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
+      const feedBack = req.body.feedback;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
-          status: "pending",
-          feedback: 'under review'
+          feedback: feedBack,
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
@@ -282,14 +282,11 @@ async function run() {
 
     app.patch("/classes/denied/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const feedBack = req.body.feedback;
-      console.log(feedBack);
 
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
           status: "denied",
-          feedback: feedBack,
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
@@ -337,7 +334,6 @@ async function run() {
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
       const amount = parseFloat(price * 100);
-      console.log(amount);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
@@ -392,6 +388,6 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("server");
+  res.send("Fluent Friend Server- Final Assignment");
 });
 app.listen(port);
