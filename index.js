@@ -92,8 +92,21 @@ async function run() {
       next();
     };
 
+    // student Verify
+    const verifyStudent = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "student") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access" });
+      }
+      next();
+    };
+
     // Basic Apis
-    app.get("/classes", verifyJWT, async (req, res) => {
+    app.get("/classes", verifyJWT, verifyInstructor, async (req, res) => {
       let query = {};
       if (req.query.email) {
         query = { email: req.query.email };
@@ -139,13 +152,13 @@ async function run() {
     });
 
     // students dashboard related apis
-    app.post("/selectedClasses", verifyJWT, async (req, res) => {
+    app.post("/selectedClasses", verifyJWT, verifyStudent, async (req, res) => {
       const selectedOne = req.body;
       const result = await selectedClassesCollection.insertOne(selectedOne);
       res.send(result);
     });
 
-    app.get("/selectedClasses", verifyJWT, async (req, res) => {
+    app.get("/selectedClasses", verifyJWT, verifyStudent, async (req, res) => {
       const email = req.query.email;
       if (!email) {
         res.send([]);
@@ -161,21 +174,21 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/selectedClasses/:id", verifyJWT, async (req, res) => {
+    app.get("/selectedClasses/:id", verifyJWT, verifyStudent, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await selectedClassesCollection.findOne(query);
       res.send(result);
     });
 
-    app.delete("/selectedClasses/:id", async (req, res) => {
+    app.delete("/selectedClasses/:id", verifyJWT, verifyStudent, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await selectedClassesCollection.deleteOne(query);
       res.send(result);
     });
 
-    app.get("/enrolledOrPayments", verifyJWT, async (req, res) => {
+    app.get("/enrolledOrPayments", verifyJWT, verifyStudent, async (req, res) => {
       const email = req.query.email;
       if (!email) {
         res.send([]);
@@ -187,7 +200,7 @@ async function run() {
           .send({ error: true, message: "forbidden access" });
       }
       const query = { email: email };
-      const result = await paymentCollection.find(query).toArray();
+      const result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
       res.send(result);
     });
 
@@ -224,6 +237,17 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users/student/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        return res.send({ student: false });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const result = { student: user?.role === "student" };
+      res.send(result);
+    });
+
     // ADMIN Works
     app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
@@ -236,6 +260,7 @@ async function run() {
       const updateDoc = {
         $set: {
           status: "approved",
+          feedback: "perfect"
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
@@ -248,6 +273,7 @@ async function run() {
       const updateDoc = {
         $set: {
           status: "pending",
+          feedback: 'under review'
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
@@ -256,10 +282,14 @@ async function run() {
 
     app.patch("/classes/denied/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
+      const feedBack = req.body.feedback;
+      console.log(feedBack);
+
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
           status: "denied",
+          feedback: feedBack,
         },
       };
       const result = await classesCollection.updateOne(filter, updateDoc);
