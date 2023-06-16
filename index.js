@@ -150,14 +150,12 @@ async function run() {
       if (!email) {
         res.send([]);
       }
-
       const decodedEmail = req.decoded.email;
       if (email !== decodedEmail) {
         return res
           .status(403)
           .send({ error: true, message: "forbidden access" });
       }
-
       const query = { email: email };
       const result = await selectedClassesCollection.find(query).toArray();
       res.send(result);
@@ -174,6 +172,22 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await selectedClassesCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.get("/enrolledOrPayments", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        res.send([]);
+      }
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access" });
+      }
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
 
