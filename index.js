@@ -53,6 +53,10 @@ async function run() {
       .db("Fluent-Friends-DB")
       .collection("selectedClasses");
 
+    const paymentCollection = client
+      .db("Fluent-Friends-DB")
+      .collection("payments");
+
     // jwt
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -98,17 +102,10 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/classes/approved', async(req, res)=>{
-      const filter = {status: 'approved'}
-      const result = await classesCollection.find(filter).toArray()
-      res.send(result); 
-    })
-
-    app.get("/classes/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await classesCollection.findOne(query);
-      res.json({result});
+    app.get("/classes/approved", async (req, res) => {
+      const filter = { status: "approved" };
+      const result = await classesCollection.find(filter).toArray();
+      res.send(result);
     });
 
     app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
@@ -130,13 +127,13 @@ async function run() {
     );
 
     app.get("/instructors", async (req, res) => {
-      const query = {role: 'instructor'}
+      const query = { role: "instructor" };
       const result = await usersCollection.find(query).toArray();
       res.send(result);
     });
 
     app.get("/students", async (req, res) => {
-      const query = {role: 'student'}
+      const query = { role: "student" };
       const result = await usersCollection.find(query).toArray();
       res.send(result);
     });
@@ -166,6 +163,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/selectedClasses/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await selectedClassesCollection.findOne(query);
+      res.send(result);
+    });
+
     app.delete("/selectedClasses/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -178,13 +182,6 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
-
-    // app.get("/totalStudents", async (req, res) => {
-    //   const query = { role: {role: "student"} };
-    //   const students = usersCollection.find(query)
-    //   const result = await students.estimatedDocumentCount();
-    //   res.send({totalStudent: result});
-    // });
 
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -297,7 +294,8 @@ async function run() {
     // Payment
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
-      const amount = parseFloat(price * 100)
+      const amount = parseFloat(price * 100);
+      console.log(amount);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
@@ -306,6 +304,41 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
+    });
+
+    // Save payment to db
+    app.post("/payments", verifyJWT, async (req, res) => {
+      const payment = req.body;
+
+      // Delete From Selected Class
+      const deleteQuery = { _id: new ObjectId(payment.idInSelectedClassDB) };
+      const deleteFromSelected = await selectedClassesCollection.deleteOne(
+        deleteQuery
+      );
+
+      // Remove 1 add 1 on students count
+      const classFilter = { _id: new ObjectId(payment.enrolledClassId) };
+      const classDoc = await classesCollection.findOne(classFilter);
+      const currentAvailableSeats = classDoc.available_seats;
+      const currentEnrolledStudents = classDoc.enrolled_students;
+
+      // Calculate new values
+      const updatedAvailableSeats = currentAvailableSeats - 1;
+      const updatedEnrolledStudents = currentEnrolledStudents + 1;
+
+      const updateDoc = {
+        $set: {
+          available_seats: updatedAvailableSeats,
+          enrolled_students: updatedEnrolledStudents,
+        },
+      };
+      const updateStudentCount = await classesCollection.updateOne(
+        classFilter,
+        updateDoc
+      );
+
+      const result = await paymentCollection.insertOne(payment);
+      res.send({ result, deleteFromSelected, updateStudentCount });
     });
 
     console.log(
